@@ -3,6 +3,8 @@ package serviceaccounts
 import (
 	"fmt"
 
+	"k8s.io/klog/v2"
+
 	"github.com/loft-sh/vcluster/pkg/mappings"
 	"github.com/loft-sh/vcluster/pkg/patcher"
 	"github.com/loft-sh/vcluster/pkg/pro"
@@ -26,15 +28,22 @@ func New(ctx *synccontext.RegisterContext) (syncertypes.Object, error) {
 		return nil, err
 	}
 
+	eksPodIdentity, err := pro.CreateEKSPodIdentity(ctx.ToSyncContext(""))
+	if err != nil {
+		return nil, err
+	}
+
 	return &serviceAccountSyncer{
 		GenericTranslator: translator.NewGenericTranslator(ctx, "serviceaccount", &corev1.ServiceAccount{}, mapper),
 		Importer:          pro.NewImporter(mapper),
+		eksPodIdentity:    eksPodIdentity,
 	}, nil
 }
 
 type serviceAccountSyncer struct {
 	syncertypes.GenericTranslator
 	syncertypes.Importer
+	eksPodIdentity syncertypes.EKSPodIdentity
 }
 
 var _ syncertypes.OptionsProvider = &serviceAccountSyncer{}
@@ -63,7 +72,14 @@ func (s *serviceAccountSyncer) SyncToHost(ctx *synccontext.SyncContext, event *s
 	pObj.AutomountServiceAccountToken = &[]bool{false}[0]
 	pObj.ImagePullSecrets = nil
 
-	err := pro.ApplyPatchesHostObject(ctx, nil, pObj, event.Virtual, ctx.Config.Sync.ToHost.ServiceAccounts.Patches, false)
+	// creates pod identity association and adds an annotation with association ID
+	// TODO:
+	err := s.eksPodIdentity.Create(ctx, pObj)
+	if err != nil {
+		return ctrl.Result{}, fmt.Errorf("EKS pod identity mapping: %w", err)
+	}
+
+	err = pro.ApplyPatchesHostObject(ctx, nil, pObj, event.Virtual, ctx.Config.Sync.ToHost.ServiceAccounts.Patches, false)
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("apply patches: %w", err)
 	}
@@ -94,6 +110,12 @@ func (s *serviceAccountSyncer) Sync(ctx *synccontext.SyncContext, event *synccon
 
 func (s *serviceAccountSyncer) SyncToVirtual(ctx *synccontext.SyncContext, event *synccontext.SyncToVirtualEvent[*corev1.ServiceAccount]) (_ ctrl.Result, retErr error) {
 	if event.VirtualOld != nil || event.Host.DeletionTimestamp != nil {
+		// deletes pod identity association and adds an annotation with association ID
+		err := s.eksPodIdentity.Delete(ctx, event.Host)
+		if err != nil {
+			// warn here but do not error, so the host object is always deleted
+			klog.FromContext(ctx.Context).Error(err, "cannot delete EKS pod identity")
+		}
 		// virtual object is not here anymore, so we delete
 		return patcher.DeleteHostObject(ctx, event.Host, event.VirtualOld, "virtual object was deleted")
 	}

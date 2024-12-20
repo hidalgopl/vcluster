@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/invopop/jsonschema"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/yaml"
 )
 
@@ -93,6 +94,10 @@ type Integrations struct {
 	// - Certificates and Issuers will be synced from the virtual cluster to the host cluster.
 	// - ClusterIssuers will be synced from the host cluster to the virtual cluster.
 	CertManager CertManager `json:"certManager,omitempty"`
+
+	// EKSPodIdentity lets you define service account selector for virtual service account that should be automatically
+	// associated with provided IAM Roles
+	EKSPodIdentity EKSPodIdentity `json:"eksPodIdentity,omitempty"`
 }
 
 // CertManager reuses a host cert-manager and makes its CRDs from it available inside the vCluster
@@ -125,6 +130,27 @@ type ClusterIssuersSyncConfig struct {
 	EnableSwitch
 	// Selector defines what cluster issuers should be imported.
 	Selector LabelSelector `json:"selector,omitempty"`
+}
+
+// EKSPodIdentity let's you define service account selector for virtual service account that should be automatically
+// associated with provided IAM Roles
+type EKSPodIdentity struct {
+	EnableSwitch
+
+	// Name of the EKS cluster hosting vCluster
+	HostClusterName string `json:"hostClusterName,omitempty"`
+
+	// RoleMappings specifies which IAM Roles (by ARN) should be associated with which service account from virtual cluster.
+	RoleMappings []EKSPodIdentityRoleMapping `json:"roleMappings,omitempty"`
+}
+
+type EKSPodIdentityRoleMapping struct {
+	// RoleARN is IAM Role ARN
+	RoleARN string `json:"roleARN,omitempty"`
+	// NamespaceSelector allows you to select
+	NamespaceSelector *metav1.LabelSelector `json:"namespaceSelector,omitempty"`
+	// ServiceAccountSelector allows you to select service accounts in the namespace(s) matched by NamespaceSelector
+	ServiceAccountSelector *metav1.LabelSelector `json:"serviceAccountSelector,omitempty"`
 }
 
 // ExternalSecrets reuses a host external secret operator and makes certain CRDs from it available inside the vCluster

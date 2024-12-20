@@ -1074,6 +1074,46 @@
       "additionalProperties": false,
       "type": "object"
     },
+    "EKSPodIdentity": {
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Enabled defines if this option should be enabled."
+        },
+        "hostClusterName": {
+          "type": "string",
+          "description": "Name of the EKS cluster hosting vCluster"
+        },
+        "roleMappings": {
+          "items": {
+            "$ref": "#/$defs/EKSPodIdentityRoleMapping"
+          },
+          "type": "array",
+          "description": "RoleMappings specifies which IAM Roles (by ARN) should be associated with which service account from virtual cluster."
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "description": "EKSPodIdentity let's you define service account selector for virtual service account that should be automatically associated with provided IAM Roles"
+    },
+    "EKSPodIdentityRoleMapping": {
+      "properties": {
+        "roleARN": {
+          "type": "string",
+          "description": "RoleARN is IAM Role ARN"
+        },
+        "namespaceSelector": {
+          "$ref": "#/$defs/LabelSelector",
+          "description": "NamespaceSelector allows you to select"
+        },
+        "serviceAccountSelector": {
+          "$ref": "#/$defs/LabelSelector",
+          "description": "ServiceAccountSelector allows you to select service accounts in the namespace(s) matched by NamespaceSelector"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
     "EnableAutoSwitchWithPatches": {
       "properties": {
         "enabled": {
@@ -1962,6 +2002,10 @@
         "certManager": {
           "$ref": "#/$defs/CertManager",
           "description": "CertManager reuses a host cert-manager and makes its CRDs from it available inside the vCluster.\n- Certificates and Issuers will be synced from the virtual cluster to the host cluster.\n- ClusterIssuers will be synced from the host cluster to the virtual cluster."
+        },
+        "eksPodIdentity": {
+          "$ref": "#/$defs/EKSPodIdentity",
+          "description": "EKSPodIdentity lets you define service account selector for virtual service account that should be automatically\nassociated with provided IAM Roles"
         }
       },
       "additionalProperties": false,
