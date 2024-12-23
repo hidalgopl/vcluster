@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/invopop/jsonschema"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/yaml"
 )
 
@@ -148,9 +147,9 @@ type EKSPodIdentityRoleMapping struct {
 	// RoleARN is IAM Role ARN
 	RoleARN string `json:"roleARN,omitempty"`
 	// NamespaceSelector allows you to select
-	NamespaceSelector *metav1.LabelSelector `json:"namespaceSelector,omitempty"`
+	NamespaceSelector LabelSelector `json:"namespaceSelector,omitempty"`
 	// ServiceAccountSelector allows you to select service accounts in the namespace(s) matched by NamespaceSelector
-	ServiceAccountSelector *metav1.LabelSelector `json:"serviceAccountSelector,omitempty"`
+	ServiceAccountSelector LabelSelector `json:"serviceAccountSelector,omitempty"`
 }
 
 // ExternalSecrets reuses a host external secret operator and makes certain CRDs from it available inside the vCluster
